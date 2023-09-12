@@ -1,2 +1,2 @@
 # geotag
-Geotagging av bilder
+Enkel liten PyQt5 app som lar deg geotagge valgte bilder i ei mappe
