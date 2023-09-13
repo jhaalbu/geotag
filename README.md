@@ -1,7 +1,7 @@
 # Geotagg bilder
 Enkel liten PyQt5 app som lar deg geotagge valgte bilder i ei mappe
 
-Appen nyttar biblioteka pyqt5  piexif, desse må installerast før appen kan kjørest
+Appen nyttar biblioteka pyqt5 og piexif, desse må installerast før appen kan brukes.
 
 ```
 pip install pyqt5 piexif
