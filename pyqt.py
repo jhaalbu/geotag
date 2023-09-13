@@ -82,6 +82,13 @@ class MainWindow(QMainWindow):
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         maxZoom: 19,
                     }).addTo(map);
+                    var states = L.tileLayer.wms('https://opencache.statkart.no/gatekeeper/gk/gk.open_gmaps?layers=topo4&zoom={z}&x={x}&y={y}',
+                    {
+                        format: 'image/png',
+                        transparent: true,
+                        layers: "topo4"
+                    });
+                    states.addTo(map);         
 
                     map.on('click', function(e) {
                         var lat = e.latlng.lat;
