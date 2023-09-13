@@ -12,5 +12,6 @@ Fila pyqt.py må så lastes ned, og fra mappa der denne fila ligger kjøres komm
 ```
 python run pyqt.py
 ```
+Appen brukes ved å først velge eit punkt i kartet, for så å velge bildene fra ei mappe som skal få koordinat for punktet.
 
 ![Geotag](geotag.png)
