@@ -13,3 +13,4 @@ Fila pyqt.py må så lastes ned, og fra mappa der denne fila ligger kjøres komm
 python run pyqt.py
 ```
 
+![Geotag](geotag.png)
