@@ -10,7 +10,7 @@ pip install pyqt5 piexif
 Fila pyqt.py må så lastes ned, og fra mappa der denne fila ligger kjøres kommandoen:
 
 ```
-python run pyqt.py
+python pyqt.py
 ```
 Appen brukes ved å først velge eit punkt i kartet, for så å velge bildene fra ei mappe som skal få koordinat for punktet.
 
