@@ -5,7 +5,7 @@ Appen nyttar biblioteka pyqt5 og piexif, desse må installerast før appen kan b
 
 Det enkleste er å bruke Anaconda til å lage nytt virtual enviroment:
 
-![env](env.png)
+![env](env.jpg)
 
 
 ```
