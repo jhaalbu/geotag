@@ -7,6 +7,8 @@ Det enkleste er å bruke Anaconda til å lage nytt virtual enviroment:
 
 ![env](env.jpg)
 
+![cmd](cmd.jpg)
+
 Installere cmd, og kjøre kommandoene under:
 
 ```
