@@ -3,6 +3,11 @@ Enkel liten PyQt5 app som lar deg geotagge valgte bilder i ei mappe
 
 Appen nyttar biblioteka pyqt5 og piexif, desse må installerast før appen kan brukes.
 
+Det enkleste er å bruke Anaconda til å lage nytt virtual enviroment:
+
+![env](env.png)
+
+
 ```
 pip install pyqt5 piexif
 ```
