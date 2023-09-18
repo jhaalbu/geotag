@@ -7,6 +7,7 @@ Det enkleste er å bruke Anaconda til å lage nytt virtual enviroment:
 
 ![env](env.jpg)
 
+Installere cmd, og kjøre kommandoene under:
 
 ```
 pip install pyqt5 piexif
