@@ -82,6 +82,13 @@ class MainWindow(QMainWindow):
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         maxZoom: 19,
                     }).addTo(map);
+                    var states = L.tileLayer.wms('https://opencache.statkart.no/gatekeeper/gk/gk.open_gmaps?layers=topo4&zoom={z}&x={x}&y={y}',
+                    {
+                        format: 'image/png',
+                        transparent: true,
+                        layers: "topo4"
+                    });
+                    states.addTo(map);         
 
                     map.on('click', function(e) {
                         var lat = e.latlng.lat;
@@ -102,16 +109,16 @@ class MainWindow(QMainWindow):
             </html>
         ''')
 
-        self.lat_label = QLabel('Latitude: Not selected')
-        self.lon_label = QLabel('Longitude: Not selected')
+        self.lat_label = QLabel('Breddegrad: Ikkje valt')
+        self.lon_label = QLabel('Lengdegrad: Ikkje valt')
         
-        self.select_files_btn = QPushButton('Select Images')
+        self.select_files_btn = QPushButton('Velg bilder')
         self.select_files_btn.clicked.connect(self.select_files)
         
         self.selected_files_display = QTextEdit()
         self.selected_files_display.setReadOnly(True)
 
-        self.write_exif_btn = QPushButton('Write EXIF Data')
+        self.write_exif_btn = QPushButton('Skriv koordinater til EXIF')
         self.write_exif_btn.clicked.connect(self.write_exif_data)
         self.write_exif_btn.setEnabled(False)  # Disable it initially
 
@@ -133,21 +140,53 @@ class MainWindow(QMainWindow):
     def update_coordinates(self, lat, lon):
         self.lat = float(lat)
         self.lon = float(lon)
-        self.lat_label.setText(f'Latitude: {lat}')
-        self.lon_label.setText(f'Longitude: {lon}')
+        self.lat_label.setText(f'Breddegrad: {lat}')
+        self.lon_label.setText(f'Lengdegrad: {lon}')
 
     def select_files(self):
         options = QFileDialog.Options()
-        file_names, _ = QFileDialog.getOpenFileNames(self,"Select Image Files", "","JPEG Files (*.jpg);;All Files (*)", options=options)
+        file_names, _ = QFileDialog.getOpenFileNames(self,"Velg filer", "","JPEG Files (*.jpg);;All Files (*)", options=options)
         
         if file_names:
-            self.selected_files = file_names
-            self.selected_files_display.setText("\n".join(file_names))
-            self.write_exif_btn.setEnabled(True)  # Enable the button
+            files_with_exif = []
+            files_missing_exif = []
             
-            if not hasattr(self, 'lat') or not hasattr(self, 'lon'):
-                QMessageBox.warning(self, 'Coordinates not set', 'Please select a point on the map first.')
-                self.write_exif_btn.setEnabled(False)  # Disable the button
+            for file_name in file_names:
+                try:
+                    exif_dict = piexif.load(file_name)
+                    if exif_dict.get("GPS"):
+                        files_with_exif.append(file_name)
+                    else:
+                        files_missing_exif.append(file_name)
+                except Exception as e:
+                    print(f"Feil ved lesing av EXIF data for {file_name}: {e}")
+                    files_missing_exif.append(file_name)
+
+            # Show message box if some files have EXIF data
+            if files_with_exif:
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Question)
+                msg.setText("Nokon filer har allerede koordinater i EXIF data. Vil du skrive over?")
+                msg.setWindowTitle("Skriv over EXIF Data?")
+                msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+                returnValue = msg.exec()
+                if returnValue == QMessageBox.Yes:
+                    self.selected_files = file_names
+                else:
+                    self.selected_files = files_missing_exif
+            else:
+                self.selected_files = files_missing_exif
+
+            if self.selected_files:
+                self.selected_files_display.setText("\n".join(self.selected_files))
+                self.write_exif_btn.setEnabled(True)
+                
+                if not hasattr(self, 'lat') or not hasattr(self, 'lon'):
+                    QMessageBox.warning(self, 'Koordinater er ikkje valg', 'Velg eit punkt i kartet.')
+                    self.write_exif_btn.setEnabled(False)
+            else:
+                QMessageBox.warning(self, 'Ingen filer valgt', 'Du har ikkje valgt filer for å skrive EXIF data til.')
+
 
             
     def set_exif_location(self, file_name, lat, lng):
@@ -177,7 +216,7 @@ class MainWindow(QMainWindow):
             for file_name in self.selected_files:
                 self.set_exif_location(file_name, self.lat, self.lon)
                 
-            QMessageBox.information(self, 'Success', 'EXIF data written to selected images.')
+            QMessageBox.information(self, 'Suksess', 'Bildene har fått koordinater i EXIF.')
             
 app = QApplication([])
 window = MainWindow()
