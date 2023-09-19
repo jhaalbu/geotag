@@ -188,6 +188,8 @@ class MainWindow(QMainWindow):
         self.lat = float(lat)
         self.lon = float(lon)
         self.z = get_z_value(lat, lon)
+        if self.z is None:
+            self.z = 0
         self.lat_label.setText(f'Breddegrad: {lat}')
         self.lon_label.setText(f'Lengdegrad: {lon}')
         self.z_label.setText(f'Høgde: {self.z}')
