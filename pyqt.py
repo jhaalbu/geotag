@@ -10,6 +10,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 import piexif
 from fractions import Fraction
 from datetime import datetime
+import requests
 
 def to_deg(value, loc):
     """Convert decimal coordinates into degrees, minutes and seconds tuple for EXIF"""
@@ -27,8 +28,16 @@ def to_deg(value, loc):
 
     return ((deg, 1), (min, 1), (sec, 1)), loc_value
 
-
-
+def get_z_value(lat, lon):
+    url = f"https://ws.geonorge.no/hoydedata/v1/datakilder/dtm1/punkt?koordsys=4258&nord={lat}&ost={lon}&geojson=false"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise HTTPError for bad responses (4xx and 5xx)
+        data = response.json()
+        return data['punkter'][0]['z']
+    except requests.RequestException as e:
+        print(f"An error occurred while fetching the Z-value: {e}")
+        return None
 
 
 def float_to_dms(value):
@@ -116,6 +125,7 @@ class MainWindow(QMainWindow):
 
         self.lat_label = QLabel('Breddegrad: Ikkje valt')
         self.lon_label = QLabel('Lengdegrad: Ikkje valt')
+        self.z_label = QLabel('Høgde: Ikkje funne')
         
         self.select_files_btn = QPushButton('Velg bilder')
         self.select_files_btn.clicked.connect(self.select_files)
@@ -135,6 +145,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.browser)
         layout.addWidget(self.lat_label)
         layout.addWidget(self.lon_label)
+        layout.addWidget(self.z_label)
         layout.addWidget(self.select_files_btn)
         layout.addWidget(self.selected_files_display)
         layout.addWidget(self.write_exif_btn)
@@ -176,8 +187,10 @@ class MainWindow(QMainWindow):
     def update_coordinates(self, lat, lon):
         self.lat = float(lat)
         self.lon = float(lon)
+        self.z = get_z_value(lat, lon)
         self.lat_label.setText(f'Breddegrad: {lat}')
         self.lon_label.setText(f'Lengdegrad: {lon}')
+        self.z_label.setText(f'Høgde: {self.z}')
 
     def select_files(self):
         options = QFileDialog.Options()
@@ -253,7 +266,7 @@ class MainWindow(QMainWindow):
         gps_ifd = {
             piexif.GPSIFD.GPSVersionID: (2, 0, 0, 0),
             piexif.GPSIFD.GPSAltitudeRef: 0,
-            piexif.GPSIFD.GPSAltitude: (0, 0),
+            piexif.GPSIFD.GPSAltitude: (int(round(self.z) * 100), 100),
             piexif.GPSIFD.GPSLatitude: lat_deg[0],
             piexif.GPSIFD.GPSLatitudeRef: lat_deg[1],
             piexif.GPSIFD.GPSLongitude: lng_deg[0],
