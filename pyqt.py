@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 import piexif
 from fractions import Fraction
+from datetime import datetime
 
 def to_deg(value, loc):
     """Convert decimal coordinates into degrees, minutes and seconds tuple for EXIF"""
@@ -25,6 +26,10 @@ def to_deg(value, loc):
     sec = int(t2 * 3600)
 
     return ((deg, 1), (min, 1), (sec, 1)), loc_value
+
+
+
+
 
 def float_to_dms(value):
     deg = int(value)
@@ -122,6 +127,10 @@ class MainWindow(QMainWindow):
         self.write_exif_btn.clicked.connect(self.write_exif_data)
         self.write_exif_btn.setEnabled(False)  # Disable it initially
 
+        self.set_date_btn = QPushButton('Sett dato')
+        self.set_date_btn.clicked.connect(self.set_creation_date)
+        self.set_date_btn.setEnabled(False)
+
         layout = QVBoxLayout()
         layout.addWidget(self.browser)
         layout.addWidget(self.lat_label)
@@ -129,6 +138,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.select_files_btn)
         layout.addWidget(self.selected_files_display)
         layout.addWidget(self.write_exif_btn)
+        layout.addWidget(self.set_date_btn)
         
         container = QWidget()
         container.setLayout(layout)
@@ -137,6 +147,32 @@ class MainWindow(QMainWindow):
         
         self.show()
 
+    def set_exif_date(self, file_name, date_str):
+        exif_dict = piexif.load(file_name)
+        
+        if "Exif" not in exif_dict:
+            exif_dict["Exif"] = {}
+            
+        exif_dict["Exif"][piexif.ExifIFD.DateTimeOriginal] = date_str
+        exif_bytes = piexif.dump(exif_dict)
+        piexif.insert(exif_bytes, file_name)
+
+
+    def set_creation_date(self):
+        date_input, ok = QInputDialog.getText(self, 'Sett dato', 'Skriv inn datoen (YYYY:MM:DD HH:MM:SS):')
+        
+        if ok:
+            try:
+                # Validate the date input
+                datetime.strptime(date_input, '%Y:%m:%d %H:%M:%S')
+                
+                for file_name in self.files_missing_date:
+                    self.set_exif_date(file_name, date_input)
+                
+                QMessageBox.information(self, 'Suksess', 'Dato satt for valgte bilder.')
+            except ValueError:
+                QMessageBox.warning(self, 'Ugyldig dato', 'Formatet på den innskrevne datoen er ugyldig.')
+                
     def update_coordinates(self, lat, lon):
         self.lat = float(lat)
         self.lon = float(lon)
@@ -145,11 +181,12 @@ class MainWindow(QMainWindow):
 
     def select_files(self):
         options = QFileDialog.Options()
-        file_names, _ = QFileDialog.getOpenFileNames(self,"Velg filer", "","JPEG Files (*.jpg);;All Files (*)", options=options)
+        file_names, _ = QFileDialog.getOpenFileNames(self, "Velg filer", "", "JPEG Files (*.jpg);;All Files (*)", options=options)
         
         if file_names:
             files_with_exif = []
             files_missing_exif = []
+            files_missing_date = []
             
             for file_name in file_names:
                 try:
@@ -158,15 +195,21 @@ class MainWindow(QMainWindow):
                         files_with_exif.append(file_name)
                     else:
                         files_missing_exif.append(file_name)
+
+                    # Check if CreateDate tag exists, it's in the ExifIFD
+                    if not exif_dict.get('Exif', {}).get(piexif.ExifIFD.DateTimeOriginal):
+                        files_missing_date.append(file_name)
+                        
                 except Exception as e:
                     print(f"Feil ved lesing av EXIF data for {file_name}: {e}")
                     files_missing_exif.append(file_name)
 
             # Show message box if some files have EXIF data
             if files_with_exif:
+                with_exif_str = '\n'.join(files_with_exif)
                 msg = QMessageBox(self)
                 msg.setIcon(QMessageBox.Question)
-                msg.setText("Nokon filer har allerede koordinater i EXIF data. Vil du skrive over?")
+                msg.setText(f"Nokon filer har allerede koordinater i EXIF data. Vil du skrive over?\nFiler med koordinater:\n{with_exif_str}")
                 msg.setWindowTitle("Skriv over EXIF Data?")
                 msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
                 returnValue = msg.exec()
@@ -176,16 +219,27 @@ class MainWindow(QMainWindow):
                     self.selected_files = files_missing_exif
             else:
                 self.selected_files = files_missing_exif
+                missing_exif_str = '\n'.join(files_missing_exif)
+                QMessageBox.warning(self, 'Manglende EXIF-koordinater', f'Følgende bilder mangler EXIF-koordinater:\n{missing_exif_str}')
+
 
             if self.selected_files:
                 self.selected_files_display.setText("\n".join(self.selected_files))
                 self.write_exif_btn.setEnabled(True)
                 
+                # If files are missing the CreateDate tag, enable the set_date button
+                if files_missing_date:
+                    self.set_date_btn.setEnabled(True)
+                    self.files_missing_date = files_missing_date  # Save these files for later use
+                    missing_files_str = '\n'.join(files_missing_date)
+                    QMessageBox.warning(self, 'Ugyldig dato', f'Følgende bilder mangler datomerking:\n{missing_files_str}\n\nDu kan legge til dato ved å trykke på "Sett dato"-knappen.')
+
                 if not hasattr(self, 'lat') or not hasattr(self, 'lon'):
                     QMessageBox.warning(self, 'Koordinater er ikkje valg', 'Velg eit punkt i kartet.')
                     self.write_exif_btn.setEnabled(False)
             else:
                 QMessageBox.warning(self, 'Ingen filer valgt', 'Du har ikkje valgt filer for å skrive EXIF data til.')
+
 
 
             
@@ -199,7 +253,7 @@ class MainWindow(QMainWindow):
         gps_ifd = {
             piexif.GPSIFD.GPSVersionID: (2, 0, 0, 0),
             piexif.GPSIFD.GPSAltitudeRef: 0,
-            piexif.GPSIFD.GPSAltitude: (10000, 1000),
+            piexif.GPSIFD.GPSAltitude: (0, 0),
             piexif.GPSIFD.GPSLatitude: lat_deg[0],
             piexif.GPSIFD.GPSLatitudeRef: lat_deg[1],
             piexif.GPSIFD.GPSLongitude: lng_deg[0],
